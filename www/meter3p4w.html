@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ตรวจสอบมิเตอร์ไฟฟ้า</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="css/global.css" />
+    <style>
+        body {
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        
+        .error-text {
+            color: red;
+            font-size: 14px;
+        }
+        
+        .info-text {
+            color: #000;
+            font-size: 14px;
+        }
+        
+        .timeDiv {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .justCircle {
+            border-radius: 100%;
+            height: 100px;
+            width: 100px;
+        }
+        
+        .textTime {
+            font-size: 35px;
+            padding-top: 25px;
+        }
+        
+        .roundTestDIV {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>มิเตอร์ประเภท 3P 4W</h1>
+
+    <input type="text" id="pea_no" placeholder="PEA No." />
+
+    <label>ชนิดมิเตอร์</label>
+    <select class="form-select" id="meter_type">
+      <option value="">เลือกชนิดมิเตอร์</option>
+      <option value="analog">Analog</option>
+      <option value="digital">Digital</option>
+    </select>
+
+    <label>ประเภทการใช้งาน</label>
+    <select class="form-select" id="usage_type" disabled>
+      <option value="">เลือกประเภทการใช้งาน</option>
+      <!-- <option value="1">ปกติ</option> -->
+      <option value="2">ป้อน V,A,pf</option>
+      <option value="3">ป้อน kWh</option>
+    </select>
+
+    <div class="renderDOM"></div>
+    <div class="renderTime"></div>
+
+    <div style="display: inline-grid; width: 100%; margin-top: 35px">
+        <span class="info-text">ผลการตรวจสอบมิเตอร์ไฟฟ้า (ค่ามาตรฐาน +- 2.5%)</span>
+
+        <div class="info-text">
+            ค่าผิดพลาด Error: <span class="error-text"> 0.0000</span>
+        </div>
+        <span class="info-text">สรุปผลการตรวจสอบ: <span class="error-result">รอผลการทดสอบ</span></span>
+    </div>
+
+    <button class="rounded-5" onclick="calError()">คำนวณ</button>
+    <!-- <button onclick="calError()">dummy test 3p4w</button> -->
+</body>
+
+<script src="js/index.js"></script>
+
+<script>
+    let timer;
+    let milliseconds = 0;
+    let running = false;
+    let notAgain = false;
+    let meter_type = "";
+    let usage_type = "";
+    const calculate = async() => {
+        console.log(555);
+        let textPreResultMeter = $(".textPreResultMeter");
+        textPreResultMeter.html("1.0281");
+    };
+
+    $(document).on("change", "#meter_type", function() {
+        clearElement();
+        meter_type = $(this).val();
+        console.log("meter_type change", meter_type);
+        usage_type = $("#usage_type");
+        usage_type.val("");
+        if (meter_type === "") {
+            usage_type.attr("disabled", true);
+        } else {
+            let renderDOM = $(".renderDOM");
+            let html = "";
+            html += `${fixREV}`;
+            renderDOM.html(html);
+            console.log("555");
+            usage_type.removeAttr("disabled");
+            if (meter_type == "analog") {
+                renderAnalog();
+            }
+        }
+    });
+    $(document).on("change", "#usage_type", function() {
+        clearElement();
+        usage_type = $(this).val();
+        console.log(usage_type);
+        switch (meter_type) {
+            case "analog":
+                clearElement();
+                renderAnalog();
+                switch (usage_type) {
+                    // case "1":
+                    //     console.log("analog/usage_type/1");
+                    //     analogNormal();
+                    //     break;
+                    case "2":
+                        console.log("analog/usage_type/2");
+                        analogAVpf();
+                        break;
+                    case "3":
+                        console.log("analog/usage_type/3");
+
+                        analogKWh();
+                        break;
+                    default:
+                        console.log("invalid usage_type");
+
+                        return;
+                }
+                break;
+            case "digital":
+                clearElement();
+                switch (usage_type) {
+                    // case "1":
+                    //     console.log("digital/usage_type/1");
+                    //     digitalNormal();
+                    //     break;
+                    case "2":
+                        console.log("digital/usage_type/2");
+                        digitalVApf();
+                        break;
+                    case "3":
+                        console.log("digital/usage_type/3");
+                        digitalkWh();
+                        break;
+                    default:
+                        console.log("invalid usage_type");
+                        return;
+                }
+                break;
+        }
+    });
+
+    const renderAnalog = () => {
+        let html = "";
+        html += `
+        ${analogRound}
+        <div class="timeDiv">
+            <div>
+                <button class="justCircle bg-success" id="start">Start</button>
+
+                <button class="justCircle bg-danger" id="stop">Stop</button>
+            </div>
+            <div class="textTime" id="time">00:00:00</div>
+            <div>
+                <button class="justCircle bg-secondary" id="reset">Reset</button>
+            </div>
+        </div>
+        <div class="preResultMether">ค่า kW ที่มิเตอร์วัดได้ <span class="textPreResultMeter text-danger">0.0000</span></div>
+        `;
+        $(".renderTime").html(html);
+
+        const script = document.createElement("script");
+        script.src = "js/timeFunction.js";
+        script.addEventListener("load", function() {
+            console.log("Time function script loaded");
+        });
+        document.body.appendChild(script);
+    };
+</script>
+<script src="js/meter3p4w.js"></script>
+
+
+</html>
